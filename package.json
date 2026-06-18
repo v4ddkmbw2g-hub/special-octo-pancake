@@ -1,0 +1,15 @@
+{
+  "name": "reading-comprehension-generator",
+  "version": "1.0.0",
+  "description": "Generate California-ELA-aligned reading comprehension questions for any Project Gutenberg book, powered by Claude.",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
+    "express": "^5.2.1"
+  }
+}
