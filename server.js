@@ -64,24 +64,44 @@ app.get("/api/search", async (req, res) => {
 // 2. Generate comprehension questions for a chosen book
 // ---------------------------------------------------------------------------
 app.post("/api/generate", async (req, res) => {
-  const { gutenbergId, title, author, gradeLevel, numQuestions } = req.body || {};
-  if (!gutenbergId || !title) {
-    return res.status(400).json({ error: "Missing book selection." });
-  }
+  const { gutenbergId, title, author, gradeLevel, numQuestions, passageText } =
+    req.body || {};
 
   const num = Math.min(Math.max(parseInt(numQuestions, 10) || 5, 3), 10);
   const grade = gradeLevel || "3-5";
 
+  let bookText;
+  let isCustomPassage = false;
+  let workTitle = (title || "").trim();
+  let workAuthor = (author || "").trim();
+
   try {
-    // a) Fetch the raw book text from gutenberg.org (server-side dodges CORS)
-    const bookText = await fetchBookText(gutenbergId);
-    if (!bookText) {
-      return res.status(404).json({
-        error: "Couldn't retrieve the full text for this book from Project Gutenberg.",
+    if (passageText && passageText.trim()) {
+      // Mode 1: user pasted their own passage — use it directly, no Gutenberg fetch.
+      if (passageText.trim().length < 50) {
+        return res.status(400).json({
+          error: "That passage is too short — paste at least a few sentences.",
+        });
+      }
+      isCustomPassage = true;
+      bookText = clipBookText(passageText.trim());
+      if (!workTitle) workTitle = "Provided passage";
+    } else if (gutenbergId) {
+      // Mode 2: a Gutenberg book — fetch the raw text server-side (dodges CORS).
+      bookText = await fetchBookText(gutenbergId);
+      if (!bookText) {
+        return res.status(404).json({
+          error:
+            "Couldn't retrieve the full text for this book from Project Gutenberg.",
+        });
+      }
+    } else {
+      return res.status(400).json({
+        error: "Provide a book selection or paste a passage first.",
       });
     }
 
-    // b) Ask Claude to write the questions in our exact structured shape
+    // Ask Claude to write the questions in our exact structured shape
     const stream = client.messages.stream({
       model: MODEL,
       max_tokens: 32000,
@@ -91,7 +111,14 @@ app.post("/api/generate", async (req, res) => {
       messages: [
         {
           role: "user",
-          content: buildUserPrompt({ title, author, grade, num, bookText }),
+          content: buildUserPrompt({
+            title: workTitle,
+            author: workAuthor,
+            grade,
+            num,
+            bookText,
+            isCustomPassage,
+          }),
         },
       ],
     });
@@ -101,7 +128,12 @@ app.post("/api/generate", async (req, res) => {
     if (!textBlock) throw new Error("Model returned no text block.");
 
     const parsed = JSON.parse(textBlock.text);
-    res.json({ title, author, gradeLevel: grade, questions: parsed.questions || [] });
+    res.json({
+      title: workTitle,
+      author: workAuthor,
+      gradeLevel: grade,
+      questions: parsed.questions || [],
+    });
   } catch (err) {
     console.error("generate error:", err);
     const msg =
@@ -181,8 +213,21 @@ Requirements for every question you generate:
 
 Return the questions ordered by level: all Literal first, then Inferential, then Analytical, then Evaluative.`;
 
-function buildUserPrompt({ title, author, grade, num, bookText }) {
-  return `Generate ${num} reading-comprehension questions for grade ${grade} students about the book "${title}" by ${author}.
+function buildUserPrompt({ title, author, grade, num, bookText, isCustomPassage }) {
+  const byline = author ? ` by ${author}` : "";
+
+  if (isCustomPassage) {
+    const from = title && title !== "Provided passage" ? ` from "${title}"${byline}` : "";
+    return `Generate ${num} reading-comprehension questions for grade ${grade} students based on the following passage${from}.
+
+Base the questions strictly on this passage — do not rely on outside knowledge of the work:
+
+--- BEGIN PASSAGE ---
+${bookText}
+--- END PASSAGE ---`;
+  }
+
+  return `Generate ${num} reading-comprehension questions for grade ${grade} students about the book "${title}"${byline}.
 
 Use the text below (it may be the opening portion of a longer work) as the basis for the questions:
 

@@ -38,17 +38,50 @@
             font-size: 14px;
         }
 
+        /* Mode toggle */
+        .mode-toggle { display: flex; gap: 10px; margin-bottom: 28px; }
+        .mode-btn {
+            flex: 1;
+            background: #f0f0f5;
+            color: #555;
+            border: 2px solid #e0e0e0;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mode-btn:hover { border-color: #c3c9ff; }
+        .mode-btn.active { background: #667eea; color: white; border-color: #667eea; }
+
         .search-row { display: flex; gap: 10px; margin-bottom: 8px; }
-        .search-row input {
+        .search-row input,
+        .text-input {
             flex: 1;
             padding: 12px;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             font-size: 16px;
             font-family: inherit;
+            width: 100%;
         }
-        .search-row input:focus { outline: none; border-color: #667eea; }
+        .search-row input:focus, .text-input:focus, textarea:focus { outline: none; border-color: #667eea; }
         .hint { font-size: 13px; color: #888; margin-bottom: 20px; }
+
+        textarea {
+            width: 100%;
+            min-height: 220px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: inherit;
+            line-height: 1.5;
+            resize: vertical;
+            margin-bottom: 16px;
+        }
+        .paste-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
 
         button {
             background: #667eea;
@@ -71,12 +104,8 @@
             margin-bottom: 10px;
         }
         .book-card {
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: #f9f9f9;
+            padding: 15px; border: 2px solid #e0e0e0; border-radius: 8px;
+            cursor: pointer; transition: all 0.2s; background: #f9f9f9;
         }
         .book-card:hover { border-color: #667eea; background: #f0f0ff; transform: translateY(-2px); }
         .book-card.selected { border-color: #667eea; background: #e8ebff; border-width: 3px; }
@@ -93,12 +122,8 @@
         .form-group { display: flex; flex-direction: column; }
         .form-group label { font-weight: 600; margin-bottom: 8px; color: #333; font-size: 14px; }
         .form-group select {
-            padding: 10px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            font-size: 14px;
-            font-family: inherit;
-            cursor: pointer;
+            padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;
+            font-size: 14px; font-family: inherit; cursor: pointer;
         }
         .form-group select:focus { outline: none; border-color: #667eea; }
         .gen-btn { width: 100%; }
@@ -113,15 +138,9 @@
 
         .question-type-section { margin-bottom: 40px; }
         .question-type-header {
-            background: #667eea;
-            color: white;
-            padding: 12px 16px;
-            border-radius: 6px;
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            background: #667eea; color: white; padding: 12px 16px; border-radius: 6px;
+            font-size: 18px; font-weight: 700; margin-bottom: 20px;
+            text-transform: uppercase; letter-spacing: 0.5px;
         }
         .question-card { background: #f9f9f9; border-left: 5px solid #667eea; padding: 20px; margin-bottom: 20px; border-radius: 6px; }
         .question-number { font-weight: 700; color: #667eea; margin-bottom: 6px; font-size: 13px; }
@@ -140,30 +159,72 @@
     <div class="container">
         <div class="header">
             <h1>📚 Reading Comprehension Question Generator</h1>
-            <p>Search any of Project Gutenberg's 70,000+ free books and generate AI questions aligned to California ELA standards</p>
+            <p>Generate AI questions aligned to California ELA standards — from a Project Gutenberg book or your own passage</p>
         </div>
 
         <div class="content">
-            <span class="section-label">Step 1: Search for a book</span>
-            <div class="search-row">
-                <input type="text" id="searchInput" placeholder="Try: Alice in Wonderland, Sherlock Holmes, Frankenstein, Tom Sawyer…">
-                <button id="searchBtn" onclick="search()">Search</button>
+            <div class="mode-toggle">
+                <button class="mode-btn active" id="modeSearchBtn" onclick="setMode('search')">🔍 Search the library</button>
+                <button class="mode-btn" id="modePasteBtn" onclick="setMode('paste')">✍️ Paste your own passage</button>
             </div>
-            <p class="hint">Books come from the free, public-domain Project Gutenberg library.</p>
-            <div id="bookResults" class="books-grid"></div>
-            <div id="searchStatus" class="status"></div>
 
-            <div id="selectedArea" style="display:none;">
-                <div class="divider"></div>
-                <span class="section-label">Step 2: Choose options and generate</span>
-                <div class="book-meta">
-                    <div class="meta-item"><span class="meta-label">Title:</span> <span id="bookTitle">-</span></div>
-                    <div class="meta-item"><span class="meta-label">Author:</span> <span id="bookAuthor">-</span></div>
+            <!-- ============ SEARCH MODE ============ -->
+            <div id="searchMode">
+                <span class="section-label">Step 1: Search for a book</span>
+                <div class="search-row">
+                    <input type="text" id="searchInput" placeholder="Try: Alice in Wonderland, Tom Sawyer, The Jungle Book…">
+                    <button id="searchBtn" onclick="search()">Search</button>
                 </div>
+                <p class="hint">Searches the free, public-domain Project Gutenberg library (classic literature).</p>
+                <div id="bookResults" class="books-grid"></div>
+                <div id="searchStatus" class="status"></div>
+
+                <div id="selectedArea" style="display:none;">
+                    <div class="divider"></div>
+                    <span class="section-label">Step 2: Choose options and generate</span>
+                    <div class="book-meta">
+                        <div class="meta-item"><span class="meta-label">Title:</span> <span id="bookTitle">-</span></div>
+                        <div class="meta-item"><span class="meta-label">Author:</span> <span id="bookAuthor">-</span></div>
+                    </div>
+                    <div class="settings">
+                        <div class="form-group">
+                            <label for="gradeLevel">Grade Level:</label>
+                            <select id="gradeLevel">
+                                <option value="K-2">K&ndash;2</option>
+                                <option value="2-3">2&ndash;3</option>
+                                <option value="3-5" selected>3&ndash;5</option>
+                                <option value="5-6">5&ndash;6</option>
+                                <option value="6-8">6&ndash;8</option>
+                                <option value="9-12">9&ndash;12</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="numQuestions">Number of Questions:</label>
+                            <select id="numQuestions">
+                                <option value="5">5 Questions</option>
+                                <option value="7">7 Questions</option>
+                                <option value="10" selected>10 Questions</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="gen-btn" id="genBtn" onclick="generateFromBook()">✨ Generate Questions with Answer Keys</button>
+                    <div id="genStatus" class="status"></div>
+                </div>
+            </div>
+
+            <!-- ============ PASTE MODE ============ -->
+            <div id="pasteMode" style="display:none;">
+                <span class="section-label">Step 1: Paste a passage</span>
+                <div class="paste-fields">
+                    <input type="text" class="text-input" id="pasteTitle" placeholder="Title (optional) — e.g. Charlotte's Web">
+                    <input type="text" class="text-input" id="pasteAuthor" placeholder="Author (optional) — e.g. E. B. White">
+                </div>
+                <textarea id="passageText" placeholder="Paste the passage here — a book excerpt, a reading from a basal, any text you want questions for…"></textarea>
+                <span class="section-label">Step 2: Choose options and generate</span>
                 <div class="settings">
                     <div class="form-group">
-                        <label for="gradeLevel">Grade Level:</label>
-                        <select id="gradeLevel">
+                        <label for="pasteGrade">Grade Level:</label>
+                        <select id="pasteGrade">
                             <option value="K-2">K&ndash;2</option>
                             <option value="2-3">2&ndash;3</option>
                             <option value="3-5" selected>3&ndash;5</option>
@@ -173,18 +234,19 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="numQuestions">Number of Questions:</label>
-                        <select id="numQuestions">
+                        <label for="pasteNum">Number of Questions:</label>
+                        <select id="pasteNum">
                             <option value="5">5 Questions</option>
                             <option value="7">7 Questions</option>
                             <option value="10" selected>10 Questions</option>
                         </select>
                     </div>
                 </div>
-                <button class="gen-btn" id="genBtn" onclick="generate()">✨ Generate Questions with Answer Keys</button>
-                <div id="genStatus" class="status"></div>
+                <button class="gen-btn" id="pasteGenBtn" onclick="generateFromPassage()">✨ Generate Questions with Answer Keys</button>
+                <div id="pasteStatus" class="status"></div>
             </div>
 
+            <!-- ============ SHARED RESULTS ============ -->
             <div class="results" id="results">
                 <div class="divider"></div>
                 <h2>Generated Questions &amp; Answer Keys</h2>
@@ -195,6 +257,15 @@
 
     <script>
         let selected = null;
+
+        function setMode(mode) {
+            const isSearch = mode === 'search';
+            document.getElementById('searchMode').style.display = isSearch ? 'block' : 'none';
+            document.getElementById('pasteMode').style.display = isSearch ? 'none' : 'block';
+            document.getElementById('modeSearchBtn').classList.toggle('active', isSearch);
+            document.getElementById('modePasteBtn').classList.toggle('active', !isSearch);
+            document.getElementById('results').classList.remove('show');
+        }
 
         document.getElementById('searchInput').addEventListener('keypress', e => {
             if (e.key === 'Enter') search();
@@ -216,7 +287,7 @@
                 if (!res.ok) throw new Error(data.error || 'Search failed');
                 if (!data.results.length) {
                     status.className = 'status';
-                    status.textContent = 'No books found. Try a different title or author.';
+                    status.textContent = 'No books found. Note: only public-domain classics are available — try Alice in Wonderland, Tom Sawyer, or paste your own passage instead.';
                     return;
                 }
                 status.textContent = '';
@@ -236,11 +307,7 @@
         }
 
         function selectBook(el) {
-            selected = {
-                id: el.dataset.id,
-                title: el.dataset.title,
-                author: el.dataset.author
-            };
+            selected = { id: el.dataset.id, title: el.dataset.title, author: el.dataset.author };
             document.querySelectorAll('.book-card').forEach(c => c.classList.remove('selected'));
             el.classList.add('selected');
             document.getElementById('bookTitle').textContent = selected.title;
@@ -251,27 +318,44 @@
             document.getElementById('selectedArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        async function generate() {
+        function generateFromBook() {
             if (!selected) return;
-            const grade = document.getElementById('gradeLevel').value;
-            const num = document.getElementById('numQuestions').value;
-            const btn = document.getElementById('genBtn');
-            const status = document.getElementById('genStatus');
+            runGeneration({
+                gutenbergId: selected.id,
+                title: selected.title,
+                author: selected.author,
+                gradeLevel: document.getElementById('gradeLevel').value,
+                numQuestions: document.getElementById('numQuestions').value
+            }, document.getElementById('genStatus'), document.getElementById('genBtn'));
+        }
+
+        function generateFromPassage() {
+            const passage = document.getElementById('passageText').value.trim();
+            const status = document.getElementById('pasteStatus');
+            if (passage.length < 50) {
+                status.className = 'status error';
+                status.textContent = 'Please paste at least a few sentences of text first.';
+                return;
+            }
+            runGeneration({
+                passageText: passage,
+                title: document.getElementById('pasteTitle').value.trim(),
+                author: document.getElementById('pasteAuthor').value.trim(),
+                gradeLevel: document.getElementById('pasteGrade').value,
+                numQuestions: document.getElementById('pasteNum').value
+            }, status, document.getElementById('pasteGenBtn'));
+        }
+
+        async function runGeneration(body, status, btn) {
             btn.disabled = true;
             status.className = 'status loading';
-            status.textContent = '⏳ Reading the book and writing questions… (this can take up to a minute)';
+            status.textContent = '⏳ Reading the text and writing questions… (this can take up to a minute)';
             document.getElementById('results').classList.remove('show');
             try {
                 const res = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        gutenbergId: selected.id,
-                        title: selected.title,
-                        author: selected.author,
-                        gradeLevel: grade,
-                        numQuestions: num
-                    })
+                    body: JSON.stringify(body)
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Generation failed');
