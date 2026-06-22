@@ -7,6 +7,9 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js"
   },
+  "engines": {
+    "node": ">=20.6.0"
+  },
   "license": "ISC",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
