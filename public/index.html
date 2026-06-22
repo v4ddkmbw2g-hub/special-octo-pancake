@@ -136,6 +136,7 @@
         .progress-label { text-align: center; color: #667eea; font-weight: 600; font-size: 15px; margin-bottom: 10px; }
         .progress-track { background: #ececf5; border-radius: 999px; height: 14px; overflow: hidden; }
         .progress-fill { background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: 0%; border-radius: 999px; transition: width 0.5s ease; }
+        .progress-detail { margin-top: 10px; text-align: center; color: #999; font-size: 12px; font-style: italic; min-height: 16px; }
 
         .results { display: none; }
         .results.show { display: block; }
@@ -255,6 +256,7 @@
             <div class="progress" id="progress" style="display:none;">
                 <div class="progress-label" id="progressLabel">Working…</div>
                 <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+                <div class="progress-detail" id="progressDetail"></div>
             </div>
 
             <!-- ============ SHARED RESULTS ============ -->
@@ -357,69 +359,104 @@
             }, status, document.getElementById('pasteGenBtn'));
         }
 
-        let progressTimer = null;
-
-        function startProgress() {
-            const wrap = document.getElementById('progress');
-            const fill = document.getElementById('progressFill');
-            const label = document.getElementById('progressLabel');
-            const labels = [
-                'Reading the text…',
-                'Thinking through the passage…',
-                'Drafting literal & inferential questions…',
-                'Adding analytical & evaluative questions…',
-                'Aligning each item to California standards…',
-                'Writing answer keys & follow-up questions…'
-            ];
-            wrap.style.display = 'block';
-            fill.style.width = '3%';
-            label.textContent = labels[0];
-            wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            const start = Date.now();
-            const EST = 55000; // rough expected duration in ms
-            clearInterval(progressTimer);
-            progressTimer = setInterval(() => {
-                const elapsed = Date.now() - start;
-                // ease toward ~92% so it never "finishes" before the real result
-                const target = 92 * (1 - Math.exp(-elapsed / (EST * 0.5)));
-                fill.style.width = target.toFixed(1) + '%';
-                const idx = Math.min(labels.length - 1, Math.floor(elapsed / 9000));
-                label.textContent = labels[idx];
-            }, 400);
+        function setProgress(pct, label) {
+            document.getElementById('progressFill').style.width = pct + '%';
+            if (label != null) document.getElementById('progressLabel').textContent = label;
         }
 
-        function stopProgress(success) {
-            clearInterval(progressTimer);
-            const wrap = document.getElementById('progress');
-            const fill = document.getElementById('progressFill');
-            const label = document.getElementById('progressLabel');
-            if (success) {
-                fill.style.width = '100%';
-                label.textContent = 'Done! ✅';
-                setTimeout(() => { wrap.style.display = 'none'; }, 700);
-            } else {
-                wrap.style.display = 'none';
-            }
+        function appendLiveQuestion(container, item, index) {
+            const card = document.createElement('div');
+            card.className = 'question-card';
+            card.innerHTML =
+                `<div class="question-number">Question ${index} · ${escapeHtml(item.type || '')}</div>` +
+                `<div class="standard-label">Standard: ${escapeHtml(item.standard || '')}</div>` +
+                `<div class="question-text">${escapeHtml(item.q || '')}</div>` +
+                `<div class="answer-key"><span class="answer-key-label">ANSWER KEY</span>` +
+                `<div class="answer-key-text">${escapeHtml(item.a || '')}</div></div>`;
+            container.appendChild(card);
+            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
         async function runGeneration(body, status, btn) {
             btn.disabled = true;
             status.className = 'status';
             status.textContent = '';
-            document.getElementById('results').classList.remove('show');
-            startProgress();
+            const results = document.getElementById('results');
+            const container = document.getElementById('questionsContainer');
+            const progress = document.getElementById('progress');
+            const detail = document.getElementById('progressDetail');
+            container.innerHTML = '';
+            detail.textContent = '';
+            results.classList.remove('show');
+            progress.style.display = 'block';
+            setProgress(2, 'Sending the text to Claude…');
+            progress.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            let streamError = null;
+            let finalQuestions = null;
+
             try {
                 const res = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Generation failed');
-                stopProgress(true);
-                displayQuestions(data.questions);
+
+                if (!res.ok) {
+                    let msg = 'Generation failed';
+                    try { const d = await res.json(); msg = d.error || msg; } catch (e) {}
+                    throw new Error(msg);
+                }
+                if (!res.body) throw new Error('Your browser does not support streaming responses.');
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buf = '';
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    buf += decoder.decode(value, { stream: true });
+                    let sep;
+                    while ((sep = buf.indexOf('\n\n')) >= 0) {
+                        const block = buf.slice(0, sep);
+                        buf = buf.slice(sep + 2);
+                        let event = 'message', dataStr = '';
+                        block.split('\n').forEach(line => {
+                            if (line.startsWith('event:')) event = line.slice(6).trim();
+                            else if (line.startsWith('data:')) dataStr += line.slice(5).trim();
+                        });
+                        if (!dataStr) continue;
+                        let data;
+                        try { data = JSON.parse(dataStr); } catch (e) { continue; }
+
+                        if (event === 'status' && data.phase === 'thinking') {
+                            setProgress(6, '🔎 Scanning the passage…');
+                        } else if (event === 'thinking') {
+                            detail.textContent = (detail.textContent + data.text).slice(-280);
+                        } else if (event === 'question') {
+                            detail.textContent = '';
+                            const pct = 10 + Math.round((data.index / data.total) * 85);
+                            setProgress(Math.min(pct, 95), `✍️ Writing question ${data.index} of ${data.total}…`);
+                            if (!results.classList.contains('show')) results.classList.add('show');
+                            appendLiveQuestion(container, data.question, data.index);
+                        } else if (event === 'done') {
+                            finalQuestions = data.questions || [];
+                        } else if (event === 'error') {
+                            streamError = data.error || 'Generation failed';
+                        }
+                    }
+                }
+
+                if (streamError) throw new Error(streamError);
+
+                setProgress(100, 'Done! ✅');
+                if (finalQuestions && finalQuestions.length) {
+                    displayQuestions(finalQuestions);
+                }
+                setTimeout(() => { progress.style.display = 'none'; }, 700);
             } catch (e) {
-                stopProgress(false);
+                progress.style.display = 'none';
                 status.className = 'status error';
                 status.textContent = e.message;
             } finally {

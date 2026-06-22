@@ -101,11 +101,30 @@ app.post("/api/generate", async (req, res) => {
       });
     }
 
-    // Ask Claude to write the questions in our exact structured shape
+  } catch (err) {
+    console.error("text fetch error:", err);
+    return res
+      .status(502)
+      .json({ error: "Couldn't retrieve the book text. Please try again." });
+  }
+
+  // --- Stream the generation to the browser as Server-Sent Events, so the
+  //     user can watch it scan the text and write each question live. ---
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  if (res.flushHeaders) res.flushHeaders();
+
+  const send = (event, data) => {
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
     const stream = client.messages.stream({
       model: MODEL,
       max_tokens: 32000,
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
       output_config: { format: { type: "json_schema", schema: QUESTION_SCHEMA } },
       system: SYSTEM_PROMPT,
       messages: [
@@ -123,24 +142,63 @@ app.post("/api/generate", async (req, res) => {
       ],
     });
 
-    const final = await stream.finalMessage();
-    const textBlock = final.content.find((b) => b.type === "text");
-    if (!textBlock) throw new Error("Model returned no text block.");
+    let fullText = "";
+    let emitted = 0;
+    let thinkingAnnounced = false;
 
-    const parsed = JSON.parse(textBlock.text);
-    res.json({
+    for await (const ev of stream) {
+      if (
+        ev.type === "content_block_start" &&
+        ev.content_block &&
+        ev.content_block.type === "thinking"
+      ) {
+        if (!thinkingAnnounced) {
+          thinkingAnnounced = true;
+          send("status", { phase: "thinking" });
+        }
+      } else if (ev.type === "content_block_delta" && ev.delta) {
+        if (ev.delta.type === "thinking_delta") {
+          if (ev.delta.thinking) send("thinking", { text: ev.delta.thinking });
+        } else if (ev.delta.type === "text_delta") {
+          fullText += ev.delta.text;
+          const qs = parseCompletedQuestions(fullText);
+          while (emitted < qs.length) {
+            send("question", { question: qs[emitted], index: emitted + 1, total: num });
+            emitted++;
+          }
+        }
+      }
+    }
+
+    // Authoritative final parse (catches the last object and any drift)
+    let allQuestions = [];
+    try {
+      const finalMsg = await stream.finalMessage();
+      const tb = finalMsg.content.find((b) => b.type === "text");
+      if (tb) allQuestions = JSON.parse(tb.text).questions || [];
+    } catch (e) {
+      allQuestions = parseCompletedQuestions(fullText);
+    }
+    while (emitted < allQuestions.length) {
+      send("question", { question: allQuestions[emitted], index: emitted + 1, total: num });
+      emitted++;
+    }
+
+    send("done", {
       title: workTitle,
       author: workAuthor,
       gradeLevel: grade,
-      questions: parsed.questions || [],
+      questions: allQuestions,
     });
+    res.end();
   } catch (err) {
     console.error("generate error:", err);
     const msg =
       err && err.status === 401
         ? "The server's Anthropic API key is missing or invalid."
         : "Something went wrong generating questions. Please try again.";
-    res.status(500).json({ error: msg });
+    send("error", { error: msg });
+    res.end();
   }
 });
 
@@ -193,6 +251,48 @@ function cleanGutenbergText(raw) {
 function clipBookText(text) {
   if (text.length <= MAX_BOOK_CHARS) return text;
   return text.slice(0, MAX_BOOK_CHARS);
+}
+
+// Scan the partially-streamed JSON and return every COMPLETE question object so
+// far. Used to push questions to the browser the moment each one finishes.
+function parseCompletedQuestions(fullText) {
+  const out = [];
+  const keyIdx = fullText.indexOf('"questions"');
+  const arrStart = fullText.indexOf("[", keyIdx >= 0 ? keyIdx : 0);
+  if (arrStart < 0) return out;
+
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  let objStart = -1;
+
+  for (let i = arrStart + 1; i < fullText.length; i++) {
+    const c = fullText[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "{") {
+      if (depth === 0) objStart = i;
+      depth++;
+    } else if (c === "}") {
+      depth--;
+      if (depth === 0 && objStart >= 0) {
+        try {
+          out.push(JSON.parse(fullText.slice(objStart, i + 1)));
+        } catch (e) {
+          /* not complete/valid yet — skip */
+        }
+        objStart = -1;
+      }
+    } else if (c === "]" && depth === 0) {
+      break;
+    }
+  }
+  return out;
 }
 
 const SYSTEM_PROMPT = `You are an expert K-12 reading-comprehension curriculum designer. You write assessment items aligned to the California Common Core State Standards for English Language Arts (CA CCSS ELA), specifically the Reading: Literature (RL) strand.
