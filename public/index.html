@@ -132,6 +132,11 @@
         .status.loading { color: #667eea; }
         .status.error { color: #c33; background: #fee; padding: 12px; border-radius: 6px; border-left: 4px solid #c33; text-align: left; }
 
+        .progress { margin-top: 24px; }
+        .progress-label { text-align: center; color: #667eea; font-weight: 600; font-size: 15px; margin-bottom: 10px; }
+        .progress-track { background: #ececf5; border-radius: 999px; height: 14px; overflow: hidden; }
+        .progress-fill { background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: 0%; border-radius: 999px; transition: width 0.5s ease; }
+
         .results { display: none; }
         .results.show { display: block; }
         .results h2 { color: #333; margin-bottom: 30px; font-size: 24px; }
@@ -246,6 +251,12 @@
                 <div id="pasteStatus" class="status"></div>
             </div>
 
+            <!-- ============ PROGRESS ============ -->
+            <div class="progress" id="progress" style="display:none;">
+                <div class="progress-label" id="progressLabel">Working…</div>
+                <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+            </div>
+
             <!-- ============ SHARED RESULTS ============ -->
             <div class="results" id="results">
                 <div class="divider"></div>
@@ -346,11 +357,57 @@
             }, status, document.getElementById('pasteGenBtn'));
         }
 
+        let progressTimer = null;
+
+        function startProgress() {
+            const wrap = document.getElementById('progress');
+            const fill = document.getElementById('progressFill');
+            const label = document.getElementById('progressLabel');
+            const labels = [
+                'Reading the text…',
+                'Thinking through the passage…',
+                'Drafting literal & inferential questions…',
+                'Adding analytical & evaluative questions…',
+                'Aligning each item to California standards…',
+                'Writing answer keys & follow-up questions…'
+            ];
+            wrap.style.display = 'block';
+            fill.style.width = '3%';
+            label.textContent = labels[0];
+            wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const start = Date.now();
+            const EST = 55000; // rough expected duration in ms
+            clearInterval(progressTimer);
+            progressTimer = setInterval(() => {
+                const elapsed = Date.now() - start;
+                // ease toward ~92% so it never "finishes" before the real result
+                const target = 92 * (1 - Math.exp(-elapsed / (EST * 0.5)));
+                fill.style.width = target.toFixed(1) + '%';
+                const idx = Math.min(labels.length - 1, Math.floor(elapsed / 9000));
+                label.textContent = labels[idx];
+            }, 400);
+        }
+
+        function stopProgress(success) {
+            clearInterval(progressTimer);
+            const wrap = document.getElementById('progress');
+            const fill = document.getElementById('progressFill');
+            const label = document.getElementById('progressLabel');
+            if (success) {
+                fill.style.width = '100%';
+                label.textContent = 'Done! ✅';
+                setTimeout(() => { wrap.style.display = 'none'; }, 700);
+            } else {
+                wrap.style.display = 'none';
+            }
+        }
+
         async function runGeneration(body, status, btn) {
             btn.disabled = true;
-            status.className = 'status loading';
-            status.textContent = '⏳ Reading the text and writing questions… (this can take up to a minute)';
+            status.className = 'status';
+            status.textContent = '';
             document.getElementById('results').classList.remove('show');
+            startProgress();
             try {
                 const res = await fetch('/api/generate', {
                     method: 'POST',
@@ -359,10 +416,10 @@
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Generation failed');
-                status.className = 'status';
-                status.textContent = '';
+                stopProgress(true);
                 displayQuestions(data.questions);
             } catch (e) {
+                stopProgress(false);
                 status.className = 'status error';
                 status.textContent = e.message;
             } finally {
