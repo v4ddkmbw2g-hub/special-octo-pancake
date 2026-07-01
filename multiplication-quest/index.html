@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Multiplication Quest — Times Tables Practice</title>
+<meta name="description" content="A free, offline multiplication practice game and printable worksheet maker for kids. Four play modes plus shareable, printable worksheets." />
+<style>
+  :root {
+    --bg: #f4f1fb;
+    --card: #ffffff;
+    --ink: #2d2350;
+    --muted: #6b6488;
+    --purple: #7c4dff;
+    --purple-d: #5a2fd6;
+    --teal: #18bba0;
+    --orange: #ff8a3d;
+    --pink: #ff5d8f;
+    --yellow: #ffce4a;
+    --green: #2fce7a;
+    --red: #ff5a5a;
+    --line: #e7e2f4;
+    --shadow: 0 8px 24px rgba(124, 77, 255, 0.12);
+    --radius: 18px;
+    --font: "Baloo 2", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.4;
+  }
+  button { font-family: inherit; cursor: pointer; }
+
+  /* ---------- Header ---------- */
+  .app-header {
+    background: linear-gradient(120deg, var(--purple), var(--pink));
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 800; font-size: 1.35rem; letter-spacing: .3px;
+    cursor: pointer; user-select: none;
+  }
+  .brand .logo { font-size: 1.6rem; }
+  .stars-badge {
+    margin-left: auto;
+    background: rgba(255,255,255,.2);
+    border: 1px solid rgba(255,255,255,.35);
+    padding: 6px 14px; border-radius: 999px;
+    font-weight: 700; display: flex; align-items: center; gap: 6px;
+  }
+  .gear-btn {
+    background: rgba(255,255,255,.2);
+    border: 1px solid rgba(255,255,255,.35);
+    color: #fff; font-size: 1.2rem;
+    width: 42px; height: 42px; border-radius: 50%;
+  }
+
+  /* ---------- Nav ---------- */
+  .nav {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    padding: 12px 18px; background: #fff;
+    border-bottom: 1px solid var(--line);
+    position: sticky; top: 64px; z-index: 40;
+  }
+  .nav button {
+    border: 2px solid var(--line);
+    background: #fff; color: var(--ink);
+    padding: 9px 16px; border-radius: 999px;
+    font-weight: 700; font-size: .95rem;
+    transition: all .15s ease;
+  }
+  .nav button:hover { border-color: var(--purple); }
+  .nav button.active {
+    background: var(--purple); color: #fff; border-color: var(--purple);
+  }
+
+  /* ---------- Layout ---------- */
+  main { max-width: 880px; margin: 0 auto; padding: 24px 18px 80px; }
+  .screen { animation: fade .25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 26px; margin-bottom: 20px;
+  }
+  h1 { font-size: 1.8rem; margin: 0 0 6px; }
+  h2 { font-size: 1.3rem; margin: 0 0 12px; }
+  p.lead { color: var(--muted); margin-top: 0; }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    border: none; border-radius: 14px; padding: 14px 22px;
+    font-weight: 800; font-size: 1.05rem; color: #fff;
+    background: var(--purple); box-shadow: 0 4px 0 var(--purple-d);
+    transition: transform .08s ease;
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--purple-d); }
+  .btn.teal { background: var(--teal); box-shadow: 0 4px 0 #0e9580; }
+  .btn.orange { background: var(--orange); box-shadow: 0 4px 0 #d96a22; }
+  .btn.ghost {
+    background: #fff; color: var(--purple);
+    border: 2px solid var(--purple); box-shadow: none;
+  }
+  .btn.sm { padding: 9px 16px; font-size: .95rem; }
+
+  /* ---------- Home tiles ---------- */
+  .mode-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .mode-tile {
+    text-align: left; border: none; border-radius: var(--radius);
+    padding: 22px; color: #fff; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: 6px; min-height: 150px;
+  }
+  .mode-tile .emoji { font-size: 2.4rem; }
+  .mode-tile .t { font-size: 1.25rem; font-weight: 800; }
+  .mode-tile .d { font-size: .92rem; opacity: .95; }
+  .m-drop { background: linear-gradient(135deg, #7c4dff, #b06dff); }
+  .m-mystery { background: linear-gradient(135deg, #18bba0, #44d6a8); }
+  .m-speed { background: linear-gradient(135deg, #ff8a3d, #ffb14a); }
+  .m-array { background: linear-gradient(135deg, #ff5d8f, #ff85ab); }
+  .m-sheet { background: linear-gradient(135deg, #3a8dff, #6db5ff); }
+
+  /* ---------- Equation display ---------- */
+  .equation {
+    display: flex; align-items: center; justify-content: center;
+    gap: 14px; flex-wrap: wrap; font-size: clamp(2rem, 7vw, 3.2rem);
+    font-weight: 800; margin: 18px 0;
+  }
+  .slot {
+    min-width: 64px; padding: 4px 14px; border-radius: 12px;
+    background: #f1ecff; border: 3px dashed var(--purple);
+    text-align: center; color: var(--purple);
+  }
+  .slot.filled { border-style: solid; background: #ece4ff; color: var(--ink); }
+  .digit-box {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 60px; height: 72px; margin: 0 4px; border-radius: 12px;
+    background: #f1ecff; border: 3px solid var(--purple);
+    font-size: 2.2rem; font-weight: 800; cursor: pointer;
+  }
+  .digit-box.empty { border-style: dashed; color: transparent; }
+  .digit-box.sel { box-shadow: 0 0 0 4px rgba(124,77,255,.3); }
+
+  /* ---------- Card bank ---------- */
+  .card-bank { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 18px 0; }
+  .num-card {
+    width: 56px; height: 70px; border-radius: 12px;
+    background: linear-gradient(135deg, #fff, #f3eeff);
+    border: 2px solid var(--purple); color: var(--purple);
+    font-size: 1.8rem; font-weight: 800;
+    box-shadow: 0 3px 0 rgba(124,77,255,.25);
+  }
+  .num-card:active { transform: translateY(2px); }
+
+  /* ---------- Choices ---------- */
+  .choices { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0; }
+  .choice {
+    border: 3px solid var(--line); background: #fff; border-radius: 14px;
+    padding: 18px; font-size: 1.6rem; font-weight: 800; color: var(--ink);
+    transition: all .12s ease;
+  }
+  .choice:hover { border-color: var(--purple); }
+  .choice.correct { background: var(--green); border-color: var(--green); color: #fff; }
+  .choice.wrong { background: var(--red); border-color: var(--red); color: #fff; }
+
+  .feedback { text-align: center; font-size: 1.2rem; font-weight: 800; min-height: 30px; margin: 8px 0; }
+  .feedback.good { color: var(--green); }
+  .feedback.bad { color: var(--red); }
+
+  /* ---------- Speed run HUD ---------- */
+  .hud { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .hud .pill { background: #f1ecff; border-radius: 999px; padding: 8px 16px; font-weight: 800; }
+  .timer-track { height: 14px; background: #eee; border-radius: 999px; overflow: hidden; margin-bottom: 16px; }
+  .timer-fill { height: 100%; background: linear-gradient(90deg, var(--teal), var(--green)); transition: width .25s linear; }
+
+  /* ---------- Array dots ---------- */
+  .array-wrap { display: flex; justify-content: center; margin: 16px 0; }
+  .array-grid { display: grid; gap: 8px; }
+  .dot { width: 26px; height: 26px; border-radius: 50%; background: var(--orange); }
+  .stepper { display: inline-flex; align-items: center; gap: 10px; font-size: 1.4rem; font-weight: 800; }
+  .stepper button { width: 44px; height: 44px; border-radius: 12px; border: none; background: var(--purple); color: #fff; font-size: 1.4rem; }
+
+  /* ---------- Settings panel ---------- */
+  .overlay { position: fixed; inset: 0; background: rgba(45,35,80,.45); z-index: 100; display: none; }
+  .overlay.open { display: block; }
+  .panel {
+    position: fixed; top: 0; right: 0; height: 100%; width: min(380px, 90vw);
+    background: #fff; z-index: 101; box-shadow: -8px 0 30px rgba(0,0,0,.2);
+    padding: 22px; overflow-y: auto; transform: translateX(100%); transition: transform .25s ease;
+  }
+  .panel.open { transform: none; }
+  .panel h2 { display: flex; justify-content: space-between; align-items: center; }
+  .close-x { border: none; background: none; font-size: 1.6rem; cursor: pointer; color: var(--muted); }
+  .field { margin: 16px 0; }
+  .field label { font-weight: 700; display: block; margin-bottom: 8px; }
+  .table-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .table-grid button {
+    border: 2px solid var(--line); background: #fff; border-radius: 10px;
+    padding: 10px 0; font-weight: 800; color: var(--ink);
+  }
+  .table-grid button.on { background: var(--purple); color: #fff; border-color: var(--purple); }
+  .seg { display: flex; gap: 6px; }
+  .seg button {
+    flex: 1; border: 2px solid var(--line); background: #fff; border-radius: 10px;
+    padding: 10px 0; font-weight: 700; color: var(--ink);
+  }
+  .seg button.on { background: var(--teal); color: #fff; border-color: var(--teal); }
+  select, input[type=number] {
+    font-family: inherit; font-size: 1rem; padding: 10px; border-radius: 10px;
+    border: 2px solid var(--line); width: 100%;
+  }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .small-note { font-size: .85rem; color: var(--muted); }
+
+  /* ---------- Worksheet ---------- */
+  .ws-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+  .worksheet {
+    background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 28px; margin-top: 20px; color: #111;
+  }
+  .ws-head { display: flex; justify-content: space-between; border-bottom: 3px solid var(--ink); padding-bottom: 10px; margin-bottom: 8px; }
+  .ws-meta { display: flex; gap: 24px; font-size: .95rem; color: #444; margin-bottom: 18px; }
+  .ws-problems { display: grid; gap: 16px 24px; }
+  .ws-prob { font-size: 1.25rem; font-weight: 700; }
+  .ws-prob .n { color: var(--purple); font-size: .9rem; margin-right: 6px; }
+  .ws-blank { display: inline-block; min-width: 46px; border-bottom: 2px solid #888; }
+  .answer-key { margin-top: 26px; border-top: 2px dashed #bbb; padding-top: 14px; }
+  .answer-key h3 { margin: 0 0 10px; }
+  .ak-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px 16px; font-size: .92rem; color: #333; }
+
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: #fff; padding: 12px 22px; border-radius: 999px;
+    font-weight: 700; opacity: 0; transition: all .25s ease; z-index: 200; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .center { text-align: center; }
+  .mt { margin-top: 18px; }
+  .hidden { display: none !important; }
+
+  /* ---------- Print ---------- */
+  @media print {
+    .app-header, .nav, .ws-controls, .ws-actions, .no-print, .overlay, .panel { display: none !important; }
+    body { background: #fff; }
+    main { max-width: none; padding: 0; }
+    .card { box-shadow: none; padding: 0; margin: 0; }
+    .worksheet { border: none; padding: 0; margin: 0; }
+    .answer-key { page-break-before: always; }
+  }
+</style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand" id="brandHome">
+      <span class="logo">✖️</span><span>Multiplication&nbsp;Quest</span>
+    </div>
+    <div class="stars-badge">⭐ <span id="starCount">0</span></div>
+    <button class="gear-btn" id="gearBtn" title="Settings" aria-label="Settings">⚙️</button>
+  </header>
+
+  <nav class="nav" id="nav">
+    <button data-screen="home">🏠 Home</button>
+    <button data-screen="drop">🃏 Digit Drop</button>
+    <button data-screen="mystery">🔍 Mystery Factor</button>
+    <button data-screen="speed">⚡ Speed Run</button>
+    <button data-screen="array">🔢 Array Builder</button>
+    <button data-screen="worksheet">🖨️ Worksheet Maker</button>
+  </nav>
+
+  <main id="app"></main>
+
+  <!-- Settings panel -->
+  <div class="overlay" id="overlay"></div>
+  <aside class="panel" id="panel" aria-label="Settings">
+    <h2>Settings <button class="close-x" id="closePanel" aria-label="Close">✕</button></h2>
+
+    <div class="field">
+      <label>Which times tables? (tap to toggle)</label>
+      <div class="table-grid" id="tableGrid"></div>
+      <div class="row mt">
+        <button class="btn ghost sm" id="selAll">All</button>
+        <button class="btn ghost sm" id="selEasy">Easy (1–5)</button>
+        <button class="btn ghost sm" id="selHard">Hard (6–12)</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Biggest second number</label>
+      <select id="maxFactor">
+        <option value="9">up to 9</option>
+        <option value="10">up to 10</option>
+        <option value="12" selected>up to 12</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Difficulty</label>
+      <div class="seg" id="diffSeg">
+        <button data-diff="easy">Easy</button>
+        <button data-diff="medium" class="on">Medium</button>
+        <button data-diff="hard">Hard</button>
+      </div>
+      <p class="small-note mt">Easy = find the answer. Medium = sometimes a missing number. Hard = bigger numbers &amp; trickier blanks.</p>
+    </div>
+
+    <button class="btn teal" id="saveSettings" style="width:100%">Save</button>
+  </aside>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* =========================================================================
+   Multiplication Quest — a 100% client-side, offline, no-API math game.
+   All problems are generated algorithmically (original work). No external
+   content is copied. Built for kids/home use, shareable, and printable.
+   ========================================================================= */
+
+/* ---------- Seeded RNG (so shared worksheets reproduce exactly) ---------- */
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let rng = Math.random; // live modes use real randomness
+function withSeed(seed, fn) {
+  const prev = rng;
+  rng = mulberry32(seed >>> 0);
+  try { return fn(); } finally { rng = prev; }
+}
+const rint = (min, max) => Math.floor(rng() * (max - min + 1)) + min;
+const pick = (arr) => arr[Math.floor(rng() * arr.length)];
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* ---------- Settings ---------- */
+const DEFAULTS = { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], maxFactor: 12, difficulty: "medium" };
+let settings = loadSettings();
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem("mq_settings"));
+    if (s && Array.isArray(s.tables) && s.tables.length) return Object.assign({}, DEFAULTS, s);
+  } catch (e) {}
+  return JSON.parse(JSON.stringify(DEFAULTS));
+}
+function saveSettings() { localStorage.setItem("mq_settings", JSON.stringify(settings)); }
+
+/* ---------- Stars (reward) ---------- */
+let stars = parseInt(localStorage.getItem("mq_stars") || "0", 10) || 0;
+function addStars(n) {
+  stars += n;
+  localStorage.setItem("mq_stars", String(stars));
+  document.getElementById("starCount").textContent = stars;
+}
+document.getElementById("starCount").textContent = stars;
+
+/* ---------- Problem generators (the math engine) ---------- */
+// Returns {a, b, p}. `a` always comes from the chosen tables.
+function genFact() {
+  const a = pick(settings.tables);
+  const b = rint(1, settings.maxFactor);
+  return { a, b, p: a * b };
+}
+// Decide which part to hide, based on difficulty. blank in {'a','b','p'}.
+function pickBlank() {
+  if (settings.difficulty === "easy") return "p";
+  if (settings.difficulty === "medium") return pick(["p", "a", "b"]);
+  return pick(["a", "b", "p", "a", "b"]); // hard leans toward missing factors
+}
+function genProblem(forceBlank) {
+  const f = genFact();
+  f.blank = forceBlank || pickBlank();
+  f.answer = f[f.blank];
+  return f;
+}
+// Plausible wrong answers near the correct product.
+function distractors(p, a, b) {
+  const set = new Set([p]);
+  const cands = shuffle([p + a, Math.abs(p - a), p + b, Math.abs(p - b),
+    a * (b + 1), a * Math.max(1, b - 1), (a + 1) * b, p + 1, Math.max(0, p - 1), p + 10, Math.abs(p - 10)]);
+  for (const c of cands) { if (c > 0 && !set.has(c)) set.add(c); if (set.size >= 4) break; }
+  let n = 2;
+  while (set.size < 4) { set.add(p + n); n++; }
+  return shuffle([...set]);
+}
+
+/* ---------- Equation rendering ---------- */
+// Render "a × b = p" where the blank part is replaced with a slot/markup.
+function eqHTML(prob, opts = {}) {
+  const slot = opts.slot || `<span class="slot">?</span>`;
+  const a = prob.blank === "a" ? slot : prob.a;
+  const b = prob.blank === "b" ? slot : prob.b;
+  const p = prob.blank === "p" ? slot : prob.p;
+  return `<span>${a}</span><span>×</span><span>${b}</span><span>=</span><span>${p}</span>`;
+}
+
+/* ---------- Screen router ---------- */
+const appEl = document.getElementById("app");
+let cleanup = null;
+// Screen-scoped timers: anything a screen schedules is cancelled the moment we
+// navigate away, so a deferred "next problem" callback can never clobber a
+// different screen's UI.
+let pendingTimers = [];
+function later(fn, ms) { const id = setTimeout(fn, ms); pendingTimers.push(id); return id; }
+function show(name, params) {
+  pendingTimers.forEach(clearTimeout); pendingTimers = [];
+  if (cleanup) { cleanup(); cleanup = null; }
+  document.querySelectorAll("#nav button").forEach((b) =>
+    b.classList.toggle("active", b.dataset.screen === name));
+  (SCREENS[name] || SCREENS.home)(params || {});
+  window.scrollTo({ top: 0 });
+}
+document.getElementById("nav").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-screen]");
+  if (b) show(b.dataset.screen);
+});
+document.getElementById("brandHome").addEventListener("click", () => show("home"));
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
+}
+
+const SCREENS = {};
+
+/* ============================ HOME ============================ */
+SCREENS.home = function () {
+  appEl.innerHTML = `
+    <div class="card">
+      <h1>Pick a way to play! 🚀</h1>
+      <p class="lead">Practice your times tables four fun ways — then print your own worksheet to do offline.</p>
+      <div class="mode-grid">
+        <button class="mode-tile m-drop" data-go="drop">
+          <span class="emoji">🃏</span><span class="t">Digit Drop</span>
+          <span class="d">Place number cards to finish the answer.</span>
+        </button>
+        <button class="mode-tile m-mystery" data-go="mystery">
+          <span class="emoji">🔍</span><span class="t">Mystery Factor</span>
+          <span class="d">Find the missing number that makes it true.</span>
+        </button>
+        <button class="mode-tile m-speed" data-go="speed">
+          <span class="emoji">⚡</span><span class="t">Speed Run</span>
+          <span class="d">Beat the clock! Build a streak for bonus stars.</span>
+        </button>
+        <button class="mode-tile m-array" data-go="array">
+          <span class="emoji">🔢</span><span class="t">Array Builder</span>
+          <span class="d">See multiplication as rows and columns of dots.</span>
+        </button>
+        <button class="mode-tile m-sheet" data-go="worksheet">
+          <span class="emoji">🖨️</span><span class="t">Worksheet Maker</span>
+          <span class="d">Make a printable sheet with an answer key.</span>
+        </button>
+      </div>
+    </div>
+    <div class="card center">
+      <h2>Practicing: ${settings.tables.slice().sort((x,y)=>x-y).join(", ")} times tables</h2>
+      <p class="lead">Tap the ⚙️ gear up top to change which tables and the difficulty.</p>
+      <button class="btn ghost" id="openSettingsHome">⚙️ Change practice settings</button>
+    </div>`;
+  appEl.querySelectorAll("[data-go]").forEach((b) =>
+    b.addEventListener("click", () => show(b.dataset.go)));
+  appEl.querySelector("#openSettingsHome").addEventListener("click", openPanel);
+};
+
+/* ====================== DIGIT DROP ====================== */
+SCREENS.drop = function () {
+  let prob, boxes, selected;
+  function next() {
+    prob = genProblem("p");                 // build the product with cards
+    boxes = String(prob.p).split("").map(() => null);
+    selected = 0;
+    render();
+  }
+  function render() {
+    const boxHTML = boxes.map((d, i) =>
+      `<div class="digit-box ${d === null ? "empty" : ""} ${i === selected ? "sel" : ""}" data-box="${i}">${d === null ? "0" : d}</div>`
+    ).join("");
+    appEl.innerHTML = `
+      <div class="card center">
+        <h1>🃏 Digit Drop</h1>
+        <p class="lead">Tap number cards to fill the answer boxes. Tap a box to clear it.</p>
+        <div class="equation">
+          <span>${prob.a}</span><span>×</span><span>${prob.b}</span><span>=</span>
+          <span style="display:inline-flex">${boxHTML}</span>
+        </div>
+        <div class="card-bank" id="bank">
+          ${[0,1,2,3,4,5,6,7,8,9].map((n) => `<button class="num-card" data-card="${n}">${n}</button>`).join("")}
+        </div>
+        <div class="feedback" id="fb"></div>
+        <div class="row" style="justify-content:center">
+          <button class="btn" id="check">Check ✓</button>
+          <button class="btn ghost" id="skip">New problem</button>
+        </div>
+      </div>`;
+    appEl.querySelector("#bank").addEventListener("click", (e) => {
+      const c = e.target.closest("[data-card]"); if (!c) return;
+      const idx = boxes.indexOf(null);
+      const target = boxes[selected] === null ? selected : (idx === -1 ? selected : idx);
+      boxes[target] = parseInt(c.dataset.card, 10);
+      const nextEmpty = boxes.indexOf(null);
+      selected = nextEmpty === -1 ? target : nextEmpty;
+      render();
+    });
+    appEl.querySelectorAll("[data-box]").forEach((b) =>
+      b.addEventListener("click", () => { boxes[+b.dataset.box] = null; selected = +b.dataset.box; render(); }));
+    appEl.querySelector("#check").addEventListener("click", check);
+    appEl.querySelector("#skip").addEventListener("click", next);
+  }
+  function check() {
+    const fb = appEl.querySelector("#fb");
+    if (boxes.includes(null)) { fb.textContent = "Fill every box first!"; fb.className = "feedback bad"; return; }
+    const entered = parseInt(boxes.join(""), 10);
+    if (entered === prob.p) {
+      fb.textContent = "🎉 Correct! +2 ⭐"; fb.className = "feedback good"; addStars(2);
+      later(next, 1100);
+    } else {
+      fb.textContent = `Not quite — ${prob.a} × ${prob.b} = ${prob.p}. Try the next one!`;
+      fb.className = "feedback bad";
+      later(next, 1800);
+    }
+  }
+  next();
+};
+
+/* ====================== MYSTERY FACTOR ====================== */
+SCREENS.mystery = function () {
+  let prob;
+  function next() {
+    // Mystery mode always hides a factor (a or b), regardless of difficulty.
+    prob = genProblem(pick(["a", "b"]));
+    render();
+  }
+  function render() {
+    appEl.innerHTML = `
+      <div class="card center">
+        <h1>🔍 Mystery Factor</h1>
+        <p class="lead">What number belongs in the box?</p>
+        <div class="equation" id="eq">${eqHTML(prob, { slot: `<span class="slot" id="theslot">?</span>` })}</div>
+        <div class="row" style="justify-content:center; max-width:320px; margin:0 auto">
+          <input type="number" id="ans" inputmode="numeric" placeholder="?"
+                 style="font-size:2rem; text-align:center; width:140px" />
+          <button class="btn" id="check">Check ✓</button>
+        </div>
+        <div class="feedback" id="fb"></div>
+        <button class="btn ghost mt" id="skip">New mystery</button>
+      </div>`;
+    const input = appEl.querySelector("#ans");
+    input.focus();
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") check(); });
+    appEl.querySelector("#check").addEventListener("click", check);
+    appEl.querySelector("#skip").addEventListener("click", next);
+  }
+  function check() {
+    const fb = appEl.querySelector("#fb");
+    const val = parseInt(appEl.querySelector("#ans").value, 10);
+    if (isNaN(val)) { fb.textContent = "Type a number first!"; fb.className = "feedback bad"; return; }
+    if (val === prob.answer) {
+      appEl.querySelector("#theslot").textContent = prob.answer;
+      appEl.querySelector("#theslot").classList.add("filled");
+      fb.textContent = "🎉 You found it! +2 ⭐"; fb.className = "feedback good"; addStars(2);
+      later(next, 1100);
+    } else {
+      fb.textContent = `The mystery number was ${prob.answer}.`; fb.className = "feedback bad";
+      later(next, 1700);
+    }
+  }
+  next();
+};
+
+/* ====================== SPEED RUN ====================== */
+SCREENS.speed = function () {
+  const DURATION = 60;
+  let timeLeft, score, streak, best = parseInt(localStorage.getItem("mq_speed_best") || "0", 10);
+  let prob, locked, ticker;
+  function start() {
+    timeLeft = DURATION; score = 0; streak = 0; locked = false;
+    clearInterval(ticker);
+    ticker = setInterval(() => {
+      timeLeft -= 0.25;
+      if (timeLeft <= 0) { timeLeft = 0; end(); }
+      const fill = appEl.querySelector("#timerFill");
+      if (fill) fill.style.width = (timeLeft / DURATION * 100) + "%";
+      const tnum = appEl.querySelector("#tnum");
+      if (tnum) tnum.textContent = Math.ceil(timeLeft);
+    }, 250);
+    nextQ();
+  }
+  function nextQ() {
+    locked = false;
+    prob = genFact();
+    const opts = distractors(prob.p, prob.a, prob.b);
+    appEl.innerHTML = `
+      <div class="card">
+        <div class="hud">
+          <span class="pill">⭐ Score: <span id="score">${score}</span></span>
+          <span class="pill">🔥 Streak: <span id="streak">${streak}</span></span>
+          <span class="pill">⏱️ <span id="tnum">${Math.ceil(timeLeft)}</span>s</span>
+        </div>
+        <div class="timer-track"><div class="timer-fill" id="timerFill" style="width:${timeLeft/DURATION*100}%"></div></div>
+        <div class="equation">${prob.a} × ${prob.b} = ?</div>
+        <div class="choices" id="choices">
+          ${opts.map((o) => `<button class="choice" data-val="${o}">${o}</button>`).join("")}
+        </div>
+        <div class="feedback" id="fb">&nbsp;</div>
+      </div>`;
+    appEl.querySelector("#choices").addEventListener("click", (e) => {
+      const c = e.target.closest(".choice"); if (!c || locked) return;
+      answer(parseInt(c.dataset.val, 10), c);
+    });
+  }
+  function answer(val, btn) {
+    locked = true;
+    const fb = appEl.querySelector("#fb");
+    if (val === prob.p) {
+      btn.classList.add("correct");
+      streak++; const bonus = 1 + Math.floor(streak / 3); // combo bonus
+      score += bonus;
+      fb.textContent = bonus > 1 ? `🔥 Combo! +${bonus}` : "✓ +1";
+      fb.className = "feedback good";
+      later(() => { if (timeLeft > 0) nextQ(); }, 350);
+    } else {
+      btn.classList.add("wrong");
+      streak = 0;
+      appEl.querySelectorAll(".choice").forEach((c) => { if (+c.dataset.val === prob.p) c.classList.add("correct"); });
+      fb.textContent = `${prob.a} × ${prob.b} = ${prob.p}`; fb.className = "feedback bad";
+      later(() => { if (timeLeft > 0) nextQ(); }, 900);
+    }
+  }
+  function end() {
+    clearInterval(ticker);
+    const isBest = score > best;
+    if (isBest) { best = score; localStorage.setItem("mq_speed_best", String(best)); }
+    addStars(Math.max(1, Math.round(score / 2)));
+    appEl.innerHTML = `
+      <div class="card center">
+        <h1>⏰ Time!</h1>
+        <div class="equation">${score}</div>
+        <p class="lead">${isBest ? "🏆 New personal best!" : "Your best is " + best + "."}</p>
+        <p>You earned <strong>${Math.max(1, Math.round(score / 2))} ⭐</strong> for the trophy case.</p>
+        <div class="row" style="justify-content:center" class="mt">
+          <button class="btn orange" id="again">Play again ⚡</button>
+          <button class="btn ghost" id="home">Back home</button>
+        </div>
+      </div>`;
+    appEl.querySelector("#again").addEventListener("click", start);
+    appEl.querySelector("#home").addEventListener("click", () => show("home"));
+  }
+  // intro
+  appEl.innerHTML = `
+    <div class="card center">
+      <h1>⚡ Speed Run</h1>
+      <p class="lead">Answer as many as you can in <strong>60 seconds</strong>. Every 3 in a row = bigger bonus!</p>
+      <p>Personal best: <strong>${best}</strong></p>
+      <button class="btn orange" id="go">Start!</button>
+    </div>`;
+  appEl.querySelector("#go").addEventListener("click", start);
+  cleanup = () => clearInterval(ticker);
+};
+
+/* ====================== ARRAY BUILDER ====================== */
+SCREENS.array = function () {
+  let sub = "count"; // "count" | "build"
+  function render() {
+    appEl.innerHTML = `
+      <div class="card center">
+        <h1>🔢 Array Builder</h1>
+        <div class="seg" style="max-width:280px; margin:0 auto 8px">
+          <button data-sub="count" class="${sub==='count'?'on':''}">Count it</button>
+          <button data-sub="build" class="${sub==='build'?'on':''}">Build it</button>
+        </div>
+        <div id="sub"></div>
+      </div>`;
+    appEl.querySelectorAll("[data-sub]").forEach((b) =>
+      b.addEventListener("click", () => { sub = b.dataset.sub; render(); }));
+    (sub === "count" ? renderCount : renderBuild)(appEl.querySelector("#sub"));
+  }
+  function dotsHTML(rows, cols) {
+    return `<div class="array-grid" style="grid-template-columns:repeat(${cols}, 26px)">
+      ${Array(rows * cols).fill('<div class="dot"></div>').join("")}</div>`;
+  }
+  function renderCount(el) {
+    const prob = genFact();
+    const rows = prob.a, cols = prob.b;
+    const opts = distractors(prob.p, prob.a, prob.b);
+    el.innerHTML = `
+      <p class="lead">How many dots? (${rows} rows of ${cols})</p>
+      <div class="array-wrap">${dotsHTML(rows, cols)}</div>
+      <div class="equation" style="font-size:1.6rem">${rows} × ${cols} = ?</div>
+      <div class="choices" style="max-width:360px;margin:0 auto">
+        ${opts.map((o) => `<button class="choice" data-val="${o}">${o}</button>`).join("")}
+      </div>
+      <div class="feedback" id="fb">&nbsp;</div>`;
+    el.querySelector(".choices").addEventListener("click", (e) => {
+      const c = e.target.closest(".choice"); if (!c) return;
+      const fb = el.querySelector("#fb");
+      if (+c.dataset.val === prob.p) {
+        c.classList.add("correct"); fb.textContent = "🎉 Correct! +2 ⭐"; fb.className = "feedback good";
+        addStars(2); later(() => renderCount(el), 1100);
+      } else {
+        c.classList.add("wrong");
+        el.querySelectorAll(".choice").forEach((x) => { if (+x.dataset.val === prob.p) x.classList.add("correct"); });
+        fb.textContent = `It was ${prob.p}.`; fb.className = "feedback bad";
+        later(() => renderCount(el), 1500);
+      }
+    });
+  }
+  function renderBuild(el) {
+    const prob = genFact();
+    let r = 1, c = 1;
+    function draw() {
+      el.innerHTML = `
+        <p class="lead">Build an array for <strong>${prob.a} × ${prob.b}</strong>. Make ${prob.a} rows and ${prob.b} columns.</p>
+        <div class="row" style="justify-content:center; gap:30px">
+          <span class="stepper">Rows <button data-d="r-">−</button> <span>${r}</span> <button data-d="r+">+</button></span>
+          <span class="stepper">Cols <button data-d="c-">−</button> <span>${c}</span> <button data-d="c+">+</button></span>
+        </div>
+        <div class="array-wrap">${dotsHTML(r, c)}</div>
+        <div class="equation" style="font-size:1.4rem">${r} × ${c} = ${r*c}</div>
+        <button class="btn" id="check">Check ✓</button>
+        <div class="feedback" id="fb">&nbsp;</div>`;
+      el.querySelectorAll("[data-d]").forEach((b) => b.addEventListener("click", () => {
+        const d = b.dataset.d;
+        if (d === "r+") r = Math.min(12, r + 1);
+        if (d === "r-") r = Math.max(1, r - 1);
+        if (d === "c+") c = Math.min(12, c + 1);
+        if (d === "c-") c = Math.max(1, c - 1);
+        draw();
+      }));
+      el.querySelector("#check").addEventListener("click", () => {
+        const fb = el.querySelector("#fb");
+        if (r === prob.a && c === prob.b) {
+          fb.textContent = "🎉 Perfect array! +3 ⭐"; fb.className = "feedback good"; addStars(3);
+          later(() => renderBuild(el), 1200);
+        } else if (r * c === prob.p) {
+          fb.textContent = `Right total! But try ${prob.a} rows × ${prob.b} columns.`; fb.className = "feedback bad";
+        } else {
+          fb.textContent = `That's ${r*c} dots. You need ${prob.p}.`; fb.className = "feedback bad";
+        }
+      });
+    }
+    draw();
+  }
+  render();
+};
+
+/* ====================== WORKSHEET MAKER ====================== */
+SCREENS.worksheet = function (params) {
+  // Worksheet config can come from a shared URL (params) or defaults.
+  let cfg = Object.assign({
+    type: "mix", count: 20, cols: 2, showAnswers: true,
+    seed: (Math.floor(Math.random() * 1e9)) >>> 0,
+    title: "Multiplication Practice",
+    tables: settings.tables.slice(), maxFactor: settings.maxFactor
+  }, params || {});
+
+  function generate() {
+    // Generate from the worksheet's own seed + table set so it reproduces exactly.
+    const savedTables = settings.tables, savedMax = settings.maxFactor;
+    settings.tables = cfg.tables; settings.maxFactor = cfg.maxFactor;
+    const probs = withSeed(cfg.seed, () => {
+      const out = [];
+      for (let i = 0; i < cfg.count; i++) {
+        let blank = "p";
+        if (cfg.type === "mystery") blank = pick(["a", "b"]);
+        else if (cfg.type === "mix") blank = pick(["p", "p", "a", "b"]);
+        out.push(genProblem(blank));
+      }
+      return out;
+    });
+    settings.tables = savedTables; settings.maxFactor = savedMax;
+    return probs;
+  }
+
+  function render() {
+    const probs = generate();
+    appEl.innerHTML = `
+      <div class="card no-print">
+        <h1>🖨️ Worksheet Maker</h1>
+        <p class="lead">Make a printable sheet, then press Print (or “Save as PDF”). Share the link to give someone the <em>exact</em> same sheet.</p>
+        <div class="ws-controls">
+          <div><label>Problem style</label>
+            <select id="wsType">
+              <option value="standard">Standard (3 × 4 = __)</option>
+              <option value="mystery">Missing factor (__ × 4 = 12)</option>
+              <option value="mix">Mix of both</option>
+            </select></div>
+          <div><label>How many?</label>
+            <select id="wsCount">
+              ${Array.from(new Set([10,15,20,25,30,40,cfg.count])).sort((a,b)=>a-b)
+                 .map((n) => `<option value="${n}">${n} problems</option>`).join("")}
+            </select></div>
+          <div><label>Columns</label>
+            <select id="wsCols">${[1,2,3,4].map((n)=>`<option value="${n}">${n}</option>`).join("")}</select></div>
+          <div><label>Title</label><input id="wsTitle" type="text" value="${cfg.title.replace(/"/g,'&quot;')}" style="font-size:1rem"></div>
+        </div>
+        <div class="row mt">
+          <label style="font-weight:700"><input type="checkbox" id="wsAns" ${cfg.showAnswers?"checked":""}> Include answer key</label>
+        </div>
+        <div class="row mt ws-actions">
+          <button class="btn" id="wsRegen">🎲 New problems</button>
+          <button class="btn teal" id="wsPrint">🖨️ Print</button>
+          <button class="btn ghost" id="wsShare">🔗 Copy share link</button>
+        </div>
+        <p class="small-note mt">Using tables ${cfg.tables.slice().sort((a,b)=>a-b).join(", ")} (up to ×${cfg.maxFactor}). Change these in ⚙️ Settings, then press “New problems”.</p>
+      </div>
+
+      <div class="card">
+        <div class="worksheet" id="sheet">
+          <div class="ws-head"><strong style="font-size:1.4rem">${escapeHTML(cfg.title)}</strong><span>✖️ Multiplication Quest</span></div>
+          <div class="ws-meta"><span>Name: _______________________</span><span>Date: ____________</span><span>Score: ____ / ${cfg.count}</span></div>
+          <div class="ws-problems" style="grid-template-columns:repeat(${cfg.cols}, 1fr)">
+            ${probs.map((p, i) => `<div class="ws-prob"><span class="n">${i + 1}.</span>${wsProbHTML(p)}</div>`).join("")}
+          </div>
+          ${cfg.showAnswers ? `<div class="answer-key">
+            <h3>Answer Key</h3>
+            <div class="ak-grid">
+              ${probs.map((p, i) => `<span>${i + 1}. ${p.a} × ${p.b} = ${p.p}</span>`).join("")}
+            </div></div>` : ""}
+        </div>
+      </div>`;
+
+    // set current control values
+    appEl.querySelector("#wsType").value = cfg.type;
+    appEl.querySelector("#wsCount").value = String(cfg.count);
+    appEl.querySelector("#wsCols").value = String(cfg.cols);
+
+    appEl.querySelector("#wsType").addEventListener("change", (e) => { cfg.type = e.target.value; cfg.seed = newSeed(); render(); });
+    appEl.querySelector("#wsCount").addEventListener("change", (e) => { cfg.count = +e.target.value; cfg.seed = newSeed(); render(); });
+    appEl.querySelector("#wsCols").addEventListener("change", (e) => { cfg.cols = +e.target.value; render(); });
+    appEl.querySelector("#wsTitle").addEventListener("input", (e) => { cfg.title = e.target.value || "Multiplication Practice"; });
+    appEl.querySelector("#wsTitle").addEventListener("change", render);
+    appEl.querySelector("#wsAns").addEventListener("change", (e) => { cfg.showAnswers = e.target.checked; render(); });
+    appEl.querySelector("#wsRegen").addEventListener("click", () => { cfg.tables = settings.tables.slice(); cfg.maxFactor = settings.maxFactor; cfg.seed = newSeed(); render(); });
+    appEl.querySelector("#wsPrint").addEventListener("click", () => window.print());
+    appEl.querySelector("#wsShare").addEventListener("click", copyShare);
+  }
+  function wsProbHTML(p) {
+    const blank = `<span class="ws-blank">&nbsp;</span>`;
+    const a = p.blank === "a" ? blank : p.a;
+    const b = p.blank === "b" ? blank : p.b;
+    const prod = p.blank === "p" ? blank : p.p;
+    return `${a} × ${b} = ${prod}`;
+  }
+  function copyShare() {
+    const data = { v: 1, type: cfg.type, count: cfg.count, cols: cfg.cols,
+      showAnswers: cfg.showAnswers, seed: cfg.seed, title: cfg.title,
+      tables: cfg.tables, maxFactor: cfg.maxFactor };
+    const hash = "#ws=" + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+    const url = location.origin + location.pathname + hash;
+    const done = () => toast("Share link copied! 🔗");
+    if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, () => prompt("Copy this link:", url));
+    else prompt("Copy this link:", url);
+    history.replaceState(null, "", hash);
+  }
+  render();
+};
+function newSeed() { return (Math.floor(Math.random() * 1e9)) >>> 0; }
+function escapeHTML(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+/* ---------- Settings panel wiring ---------- */
+const overlay = document.getElementById("overlay");
+const panel = document.getElementById("panel");
+function openPanel() { buildPanel(); overlay.classList.add("open"); panel.classList.add("open"); }
+function closePanel() { overlay.classList.remove("open"); panel.classList.remove("open"); }
+document.getElementById("gearBtn").addEventListener("click", openPanel);
+document.getElementById("closePanel").addEventListener("click", closePanel);
+overlay.addEventListener("click", closePanel);
+
+function buildPanel() {
+  const grid = document.getElementById("tableGrid");
+  grid.innerHTML = "";
+  for (let n = 1; n <= 12; n++) {
+    const b = document.createElement("button");
+    b.textContent = "×" + n;
+    b.className = settings.tables.includes(n) ? "on" : "";
+    b.addEventListener("click", () => {
+      if (settings.tables.includes(n)) settings.tables = settings.tables.filter((x) => x !== n);
+      else settings.tables.push(n);
+      if (settings.tables.length === 0) settings.tables = [n]; // never empty
+      b.className = settings.tables.includes(n) ? "on" : "";
+    });
+    grid.appendChild(b);
+  }
+  document.getElementById("maxFactor").value = String(settings.maxFactor);
+  document.querySelectorAll("#diffSeg button").forEach((b) =>
+    b.classList.toggle("on", b.dataset.diff === settings.difficulty));
+}
+document.getElementById("selAll").addEventListener("click", () => { settings.tables = [1,2,3,4,5,6,7,8,9,10,11,12]; buildPanel(); });
+document.getElementById("selEasy").addEventListener("click", () => { settings.tables = [1,2,3,4,5]; buildPanel(); });
+document.getElementById("selHard").addEventListener("click", () => { settings.tables = [6,7,8,9,10,11,12]; buildPanel(); });
+document.getElementById("diffSeg").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-diff]"); if (!b) return;
+  settings.difficulty = b.dataset.diff; buildPanel();
+});
+document.getElementById("maxFactor").addEventListener("change", (e) => { settings.maxFactor = parseInt(e.target.value, 10); });
+document.getElementById("saveSettings").addEventListener("click", () => {
+  settings.tables.sort((a, b) => a - b);
+  saveSettings(); closePanel(); toast("Settings saved! ✓");
+  const active = document.querySelector("#nav button.active");
+  show(active ? active.dataset.screen : "home");
+});
+
+/* ---------- Boot: handle a shared worksheet link, else go home ---------- */
+(function boot() {
+  const m = location.hash.match(/#ws=(.+)$/);
+  if (m) {
+    try {
+      const data = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+      show("worksheet", data);
+      return;
+    } catch (e) { /* fall through to home */ }
+  }
+  show("home");
+})();
+</script>
+</body>
+</html>

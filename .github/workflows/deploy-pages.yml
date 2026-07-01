@@ -1,0 +1,49 @@
+name: Deploy Multiplication Quest to Pages
+
+# Publishes the multiplication-quest/ folder as a static GitHub Pages site.
+# The site root becomes the game itself, e.g.
+#   https://<owner>.github.io/<repo>/
+on:
+  push:
+    branches: [claude/gifted-goodall-1epqsr]
+    paths:
+      - "multiplication-quest/**"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch: {}
+
+# Least-privilege permissions the Pages deploy needs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two Pages deploys at once; let an in-flight one finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Turns on GitHub Pages for this repo automatically (needs pages: write).
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      # Upload only the game folder so the site root IS the game.
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./multiplication-quest
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
