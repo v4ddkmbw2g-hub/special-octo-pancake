@@ -32,11 +32,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Turns on GitHub Pages for this repo automatically (needs pages: write).
+      # Reads the repo's Pages config. (Pages must first be enabled once in
+      # Settings -> Pages -> Source: "GitHub Actions" -- the automated token
+      # is not permitted to enable Pages itself.)
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       # Upload only the game folder so the site root IS the game.
       - name: Upload site artifact
